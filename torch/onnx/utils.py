@@ -56,7 +56,7 @@ def set_training(model, mode):
 def export(model, args, f, export_params=True, verbose=False, training=False,
            input_names=None, output_names=None, aten=False, export_raw_ir=False,
            operator_export_type=None, opset_version=None, _retain_param_name=True,
-           do_constant_folding=False, strip_doc_string=True):
+           do_constant_folding=False, strip_doc_string=True, example_outputs=None, dynamic_axes={}):
     r"""
     Export a model into ONNX format.  This exporter runs your model
     once in order to get a trace of its execution to be exported;
@@ -128,7 +128,7 @@ def export(model, args, f, export_params=True, verbose=False, training=False,
     _export(model, args, f, export_params, verbose, training, input_names, output_names,
             operator_export_type=operator_export_type, opset_version=opset_version,
             _retain_param_name=_retain_param_name, do_constant_folding=do_constant_folding,
-            strip_doc_string=strip_doc_string)
+            strip_doc_string=strip_doc_string, example_outputs=example_outputs, dynamic_axes=dynamic_axes)
 
 
 # ONNX can't handle constants that are lists of tensors, which can
@@ -342,7 +342,7 @@ def _export(model, args, f, export_params=True, verbose=False, training=False,
             input_names=None, output_names=None, operator_export_type=OperatorExportTypes.ONNX,
             export_type=ExportTypes.PROTOBUF_FILE, example_outputs=None, propagate=False,
             opset_version=None, _retain_param_name=False, do_constant_folding=False,
-            strip_doc_string=True):
+            strip_doc_string=True, dynamic_axes={}):
     global __IN_ONNX_EXPORT
     assert __IN_ONNX_EXPORT is False
     __IN_ONNX_EXPORT = True
@@ -360,10 +360,10 @@ def _export(model, args, f, export_params=True, verbose=False, training=False,
         # TODO: Don't allocate a in-memory string for the protobuf
         defer_weight_export = export_type is not ExportTypes.PROTOBUF_FILE
         if export_params:
-            proto, export_map = graph._export_onnx(params_dict, opset_version, defer_weight_export, operator_export_type,
+            proto, export_map = graph._export_onnx(params_dict, opset_version, dynamic_axes, defer_weight_export, operator_export_type,
                                                    strip_doc_string)
         else:
-            proto, export_map = graph._export_onnx({}, opset_version, False, operator_export_type, strip_doc_string)
+            proto, export_map = graph._export_onnx({}, opset_version, dynamic_axes, False, operator_export_type, strip_doc_string)
 
         if export_type == ExportTypes.PROTOBUF_FILE:
             assert(len(export_map) == 0)
