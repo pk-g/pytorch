@@ -264,8 +264,19 @@ void EncoderBase::EncodeBlock(
   graph_proto->set_name(block_name);
 
   for (auto input : block->inputs()) {
-    onnx::ValueInfoProto* v = graph_proto->add_input();
-    EncodeValueInfo(graph_proto, v, input, dynamic_axes);
+    
+    std::cout << "----------" << std::endl;
+    std::cout << "INPUT:" << std::endl;
+    std::cout << "NAME: " << input->debugName() << std::endl;
+    std::cout << "HAS USE: " << input->hasUses() << std::endl;
+    std::cout << "USE COUNT: " << input->uses().size() << std::endl;
+    std::cout << "----------";
+    
+   
+    if(input->hasUses()){
+      onnx::ValueInfoProto* v = graph_proto->add_input();
+      EncodeValueInfo(graph_proto, v, input, dynamic_axes);
+    }
   }
   for (auto output : block->outputs()) {
     onnx::ValueInfoProto* v = graph_proto->add_output();
@@ -346,9 +357,37 @@ void EncoderBase::EncodeBlock(
   }
   AT_ASSERT(block->inputs().size() >= initializers.size());
   for (auto& name_tensor_pair : initializers) {
-    auto p = graph_proto->add_initializer();
-    p->set_name(name_tensor_pair.first);
-    EncodeTensor(p, name_tensor_pair.second, name_tensor_pair.first);
+    bool hasUse = true;
+    for(auto input: block->inputs())
+      if (name_tensor_pair.first == input->debugName()){
+        std::cout << "Matched Input/Initializer " << input->debugName() << std::endl;
+        hasUse = input->hasUses();
+      }
+    
+    auto vsize = name_tensor_pair.second.sizes().vec();
+    std::cout << " ------------------ " << std::endl;
+    std::cout << "INITIALIZERS: " << std::endl;
+    std::cout << "NAME: " << name_tensor_pair.first << std::endl;
+    std::cout << "USE_COUNT: " << name_tensor_pair.second.use_count() << std::endl;
+    std::cout << "WEAK_USE_COUNT: " << name_tensor_pair.second.weak_use_count() << std::endl;
+    std::cout << "SHAPE_SIZE: " << vsize.size() << std::endl;
+    std::cout << "SHAPE: ";
+    for(int i = 0; i < vsize.size(); i++){
+      std::cout << vsize[i];
+      if(i != vsize.size()){
+        std::cout;
+        if(i != vsize.size()- 1)
+          std::cout <<",";
+      }
+    }
+    std::cout << std::endl;
+    std::cout << " ----------------- " << std::endl;
+    
+    if (hasUse){
+      auto p = graph_proto->add_initializer();
+      p->set_name(name_tensor_pair.first);
+      EncodeTensor(p, name_tensor_pair.second, name_tensor_pair.first);
+    }
   }
 }
 
